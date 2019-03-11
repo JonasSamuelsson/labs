@@ -7,9 +7,9 @@ namespace AspNetCore.ApiVersioning.WebApp.Controllers
    public class ValuesController : ControllerBase
    {
       [HttpGet("1"), ApiVersion(new[] { "1.1" }, Optional = true, ValidationStrategy = typeof(SemVerApiVersionValidationStrategy))]
-      public string Get1(string apiVersion)
+      public object Get1(string apiVersion)
       {
-         return apiVersion;
+         return new { ApiVersion = apiVersion };
       }
    }
 }
