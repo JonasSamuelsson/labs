@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace AspNetCore.EtagParameterBinding.Controllers
 {
@@ -7,9 +8,9 @@ namespace AspNetCore.EtagParameterBinding.Controllers
    public class ApiController : ControllerBase
    {
       [HttpGet]
-      public object Get(string etag)
+      public object Get([Required] string etag)
       {
-         return etag;
+         return new { etag };
       }
    }
 }
