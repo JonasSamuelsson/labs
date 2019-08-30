@@ -1,10 +1,10 @@
-﻿using System.Security.Claims;
-using System.Text.Encodings.Web;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Threading.Tasks;
 
 namespace AspNetCore.OptionalAuth.Authentication.Foobar
 {
@@ -22,9 +22,10 @@ namespace AspNetCore.OptionalAuth.Authentication.Foobar
 
       private AuthenticateResult HandleAuthenticate()
       {
-         return Request.Headers[HeaderNames.Authorization] == "foobar"
-            ? AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(), "foobar"))
-            : AuthenticateResult.NoResult();
+         if (Request.Headers[HeaderNames.Authorization] == "foobar")
+            return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(), FoobarAuthenticationDefaults.AuthenticationScheme));
+
+         return AuthenticateResult.NoResult();
       }
    }
 }

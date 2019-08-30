@@ -1,12 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using AspNetCore.OptionalAuth.Authentication.Foobar;
+﻿using AspNetCore.OptionalAuth.Authentication.Foobar;
 using AspNetCore.OptionalAuth.Authentication.Optional;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,9 +15,9 @@ namespace AspNetCore.OptionalAuth
       // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
       public void ConfigureServices(IServiceCollection services)
       {
-         services.AddAuthentication()
+         services.AddAuthentication(options => options.DefaultScheme = FoobarAuthenticationDefaults.AuthenticationScheme)
             .AddFoobar()
-            //.AddOptional()
+            .AddOptional()
             ;
 
          services.AddMvc(config =>
@@ -38,6 +34,8 @@ namespace AspNetCore.OptionalAuth
          {
             app.UseDeveloperExceptionPage();
          }
+
+         app.UseAuthentication();
 
          app.UseMvc();
       }

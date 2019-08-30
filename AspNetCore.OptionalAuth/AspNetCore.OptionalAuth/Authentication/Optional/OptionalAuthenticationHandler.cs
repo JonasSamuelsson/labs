@@ -1,10 +1,10 @@
-﻿using System.Security.Claims;
-using System.Text.Encodings.Web;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Threading.Tasks;
 
 namespace AspNetCore.OptionalAuth.Authentication.Optional
 {
@@ -24,7 +24,7 @@ namespace AspNetCore.OptionalAuth.Authentication.Optional
       {
          return Request.Headers.ContainsKey(HeaderNames.Authorization)
             ? AuthenticateResult.NoResult()
-            : AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(), "optional"));
+            : AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(), OptionalAuthenticationDefaults.AuthenticationScheme));
       }
    }
 }
