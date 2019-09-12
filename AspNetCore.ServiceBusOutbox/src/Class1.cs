@@ -1,39 +1,79 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 
 namespace AspNetCore.ServiceBusOutbox
 {
+   public static class OutboxServiceCollectionExtensions
+   {
+      public static void AddOutbox(this IServiceCollection services)
+      {
+         services.AddTransient<IOutbox, Outbox>();
+         services.AddScoped<OutboxContext>();
+      }
+   }
+
    public interface IOutbox
    {
-      void AddMessage(Action<IServiceBusMessageBuilder> action);
+      void AddMessage(Action<IMessageBuilder> action);
+      Task PublishMessages();
    }
 
    internal class Outbox : IOutbox
    {
       private readonly OutboxContext _outboxContext;
-      private readonly IPersistedStorage _storage;
+      private readonly IStorage _storage;
+      private readonly IMessageSenderProvider _messageSenderProvider;
 
-      public Outbox(OutboxContext outboxContext, IPersistedStorage storage)
+      public Outbox(OutboxContext outboxContext, IStorage storage, IMessageSenderProvider messageSenderProvider)
       {
          _outboxContext = outboxContext;
          _storage = storage;
+         _messageSenderProvider = messageSenderProvider;
       }
 
-      public void AddMessage(Action<IServiceBusMessageBuilder> action)
+      public void AddMessage(Action<IMessageBuilder> action)
       {
-         var builder = new ServiceBusMessageBuilder();
+         var builder = new MessageBuilder();
          action.Invoke(builder);
          var message = builder.BuildMessage();
          _outboxContext.Messages.Add(message);
          _storage.AddMessage(message);
       }
+
+      public async Task PublishMessages()
+      {
+         var messages = await _storage.GetMessages();
+
+         var tasks = new List<Task>();
+         foreach (var g in messages.GroupBy(x => new { x.Namespace, x.EntityPath }))
+         {
+            tasks.Add(PublishMessages(g.Key.Namespace, g.Key.EntityPath, g.Select(x => x.ToMessage()).ToList()));
+         }
+
+         await Task.WhenAll(tasks);
+      }
+
+      private async Task PublishMessages(string @namespace, string entityPath, IList<Message> messages)
+      {
+         var messageSender = _messageSenderProvider.GetMessageSender(@namespace, entityPath);
+         await messageSender.SendAsync(messages);
+
+      }
+   }
+
+   public class MessageEntity
+   {
+      public string Id { get; set; }
+      public string MetaData { get; set; }
+      public byte[] Body { get; set; }
    }
 
    internal class OutboxContext
@@ -41,41 +81,57 @@ namespace AspNetCore.ServiceBusOutbox
       public List<ServiceBusMessage> Messages { get; } = new List<ServiceBusMessage>();
    }
 
-   public interface IServiceBusMessageBuilder
+   public interface IMessageBuilder
    {
-      IServiceBusMessageBuilder Body<T>(T body) where T : class;
-      IServiceBusMessageBuilder Body(byte[] body, string contentType);
-      IServiceBusMessageBuilder Id(string id);
-      IServiceBusMessageBuilder PartitionKey(string partitionKey);
+      IMessageBuilder Body<T>(T body) where T : class;
+      IMessageBuilder Body(byte[] body, string contentType);
+      IMessageBuilder CorrelationId(string correlationId);
+      IMessageBuilder EntityPath(string entityPath);
+      IMessageBuilder MessageId(string messageId);
+      IMessageBuilder Namespace(string @namespace);
+      IMessageBuilder PartitionKey(string partitionKey);
+      IMessageBuilder ScheduledEnqueueTimeUtc(DateTime dateTime);
    }
 
-   internal class ServiceBusMessageBuilder : IServiceBusMessageBuilder
+   internal class MessageBuilder : IMessageBuilder
    {
       private readonly Message _message = new Message { MessageId = Guid.NewGuid().ToString() };
 
-      public IServiceBusMessageBuilder Body<T>(T body) where T : class
+      public IMessageBuilder Body<T>(T body) where T : class
       {
          var json = JsonConvert.SerializeObject(body);
          var bytes = Encoding.UTF8.GetBytes(json);
          return Body(bytes, "application/json; charset=utf8");
       }
 
-      public IServiceBusMessageBuilder Body(byte[] body, string contentType)
+      public IMessageBuilder Body(byte[] body, string contentType)
       {
          _message.Body = body;
          _message.ContentType = contentType;
          return this;
       }
 
-      public IServiceBusMessageBuilder Id(string id)
+      public IMessageBuilder CorrelationId(string correlationId)
       {
-         _message.MessageId = id;
+         _message.CorrelationId = correlationId;
          return this;
       }
 
-      public IServiceBusMessageBuilder PartitionKey(string partitionKey)
+      public IMessageBuilder MessageId(string messageId)
+      {
+         _message.MessageId = messageId;
+         return this;
+      }
+
+      public IMessageBuilder PartitionKey(string partitionKey)
       {
          throw new NotImplementedException();
+      }
+
+      public IMessageBuilder ScheduledEnqueueTimeUtc(DateTime dateTime)
+      {
+         _message.ScheduledEnqueueTimeUtc = dateTime;
+         return this;
       }
 
       public ServiceBusMessage BuildMessage()
@@ -84,43 +140,31 @@ namespace AspNetCore.ServiceBusOutbox
       }
    }
 
-   public interface IServiceBusConnectionStringProvider
-   {
-      string GetConnectionString(string @namespace);
-   }
-
    public interface IMessageSenderProvider
    {
       IMessageSender GetMessageSender(string @namespace, string entityPath);
    }
 
-   public interface IPersistedStorage
+   public interface IStorage
    {
-      void AddMessage(ServiceBusMessage message);
-      Task<IReadOnlyCollection<ServiceBusMessage>> GetMessages();
-      Task DeleteMessages(IEnumerable<ServiceBusMessage> messages);
+      void AddMessage(MessageEntity message);
+      Task<IReadOnlyCollection<MessageEntity>> GetMessages();
+      Task DeleteMessages(IEnumerable<MessageEntity> messages);
    }
 
-   public class ServiceBusMessage
+   internal class ServiceBusMessage
    {
-      public Guid BatchId { get; set; }
-      public string Namespace { get; set; }
       public string EntityPath { get; set; }
-
-      // todo
-      public Message ToMessage()
-      {
-         throw new NotImplementedException();
-      }
+      public string Namespace { get; set; }
    }
 
    internal class OutboxMiddleware : IMiddleware
    {
       private readonly OutboxContext _outboxContext;
-      private readonly IPersistedStorage _storage;
+      private readonly IStorage _storage;
       private readonly IMessageSenderProvider _messageSenderProvider;
 
-      public OutboxMiddleware(OutboxContext outboxContext, IPersistedStorage storage, IMessageSenderProvider messageSenderProvider)
+      public OutboxMiddleware(OutboxContext outboxContext, IStorage storage, IMessageSenderProvider messageSenderProvider)
       {
          _outboxContext = outboxContext;
          _storage = storage;
@@ -154,6 +198,20 @@ namespace AspNetCore.ServiceBusOutbox
          }
 
          await _storage.DeleteMessages(messages);
+      }
+   }
+
+   internal static class MessageConverter
+   {
+      internal static ServiceBusMessage EntityToMessage(MessageEntity entity)
+      {
+         throw new NotImplementedException();
+      }
+
+      internal static MessageEntity MessageToEntity(ServiceBusMessage message)
+      {
+         var metadata = new Dictionary<string, object>();
+         throw new NotImplementedException();
       }
    }
 }
