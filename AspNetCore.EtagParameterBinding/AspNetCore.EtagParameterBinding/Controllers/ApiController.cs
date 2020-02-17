@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AspNetCore.EtagParameterBinding.Controllers
 {
@@ -7,17 +8,13 @@ namespace AspNetCore.EtagParameterBinding.Controllers
    public class ApiController : ControllerBase
    {
       [HttpGet]
-      public object Get(string etag)
+      public object Get([Required]string ifMatch, string ifNoneMatch)
       {
-         Response.SetETagHeader(etag);
-         return new { etag };
+         Response.SetETagHeader(ifNoneMatch);
+         return new { ifMatch, ifNoneMatch };
       }
 
       [HttpPost]
-      public object Post(string etag)
-      {
-         Response.SetETagHeader(etag);
-         return new { etag };
-      }
+      public void Post([Required][FromHeader(Name = "xyz")]string foobar) { }
    }
 }
