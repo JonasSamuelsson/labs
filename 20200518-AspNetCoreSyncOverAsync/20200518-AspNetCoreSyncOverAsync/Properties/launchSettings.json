@@ -1,0 +1,26 @@
+﻿{
+   "$schema": "http://json.schemastore.org/launchsettings.json",
+   "iisSettings": {
+      "windowsAuthentication": false,
+      "anonymousAuthentication": true,
+      "iisExpress": {
+         "applicationUrl": "http://localhost:56295",
+         "sslPort": 0
+      }
+   },
+   "profiles": {
+      "IIS Express": {
+         "commandName": "IISExpress",
+         "environmentVariables": {
+            "ASPNETCORE_ENVIRONMENT": "Development"
+         }
+      },
+      "_20200518_AspNetCoreSyncOverAsync": {
+         "commandName": "Project",
+         "applicationUrl": "http://localhost:56295",
+         "environmentVariables": {
+            "ASPNETCORE_ENVIRONMENT": "Development"
+         }
+      }
+   }
+}
