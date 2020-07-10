@@ -5,12 +5,16 @@ using System.Linq;
 
 namespace Proxies
 {
-   public class ProxyList
+   internal class ProxyList
    {
       internal IList<ExpandoObject> Expandos { get; set; }
    }
 
-   public class ProxyList<T> : ProxyList, IList<T>
+   public interface IProxyList<T> : IList<T>, IReadOnlyList<T>
+   {
+   }
+
+   internal class ProxyList<T> : ProxyList, IProxyList<T>
    {
       public ProxyList()
       {
@@ -23,7 +27,7 @@ namespace Proxies
 
       public IEnumerator<T> GetEnumerator()
       {
-         return Expandos.Select(Proxy.Create<T>).GetEnumerator();
+         return Expandos.Select(Proxy.Wrap<T>).GetEnumerator();
       }
 
       IEnumerator IEnumerable.GetEnumerator()

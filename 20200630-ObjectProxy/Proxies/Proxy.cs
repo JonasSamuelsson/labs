@@ -3,7 +3,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.Linq;
 using System.Reflection;
 
 namespace Proxies
@@ -11,27 +10,17 @@ namespace Proxies
    public static class Proxy
    {
       private static readonly DictionaryAdapterFactory Factory = new DictionaryAdapterFactory();
-      private static readonly ConcurrentDictionary<Type, Dictionary<string, Func<object>>> InitilaizerCache = new ConcurrentDictionary<Type, Dictionary<string, Func<object>>>();
+      private static readonly ConcurrentDictionary<Type, Dictionary<string, Func<object>>> InitializerCache = new ConcurrentDictionary<Type, Dictionary<string, Func<object>>>();
+      private static readonly ConcurrentDictionary<Type, object> InitializedTypes = new ConcurrentDictionary<Type, object>();
 
-      public static T Create<T>() => Create<T>(_ => { });
+      public static T NewObject<T>() => NewObject<T>(_ => { });
 
-      public static T Create<T>(Action<T> action) => Create(new ExpandoObject(), action);
+      public static T NewObject<T>(Action<T> action) => NewObject(new ExpandoObject(), action);
 
-      public static T Create<T>(IDictionary<string, object> target) => Create<T>(target, _ => { });
+      public static T NewObject<T>(IDictionary<string, object> target) => NewObject<T>(target, _ => { });
 
-      public static T Create<T>(IDictionary<string, object> target, Action<T> action)
+      public static T NewObject<T>(IDictionary<string, object> target, Action<T> action)
       {
-         PropertyFilter.AddPropertiesToIgnore<T>(target);
-
-         Populate<T>(target);
-
-         var meta = Factory.GetAdapterMeta(typeof(T));
-
-         foreach (var property in meta.Properties)
-         {
-            property.Value.AddBehavior(new ObjectProxyPropertyBehavior());
-         }
-
          var proxy = Wrap<T>(target);
 
          action(proxy);
@@ -39,47 +28,39 @@ namespace Proxies
          return proxy;
       }
 
-      private static void Populate<T>(IDictionary<string, object> dictionary)
-      {
-         var type = typeof(T);
-         var initializers = InitilaizerCache.GetOrAdd(type, GetInitializers);
+      public static IProxyList<T> NewList<T>() => NewList<T>(new List<ExpandoObject>());
 
-         foreach (var kvp in initializers)
-         {
-            if (dictionary.ContainsKey(kvp.Key))
-               continue;
-
-            dictionary[kvp.Key] = kvp.Value();
-         }
-      }
-
-      private static Dictionary<string, Func<object>> GetInitializers(Type type)
-      {
-         var dictionary = new Dictionary<string, Func<object>>();
-
-         foreach (var property in new[] { type }.Concat(type.GetInterfaces()).SelectMany(x => x.GetProperties()))
-         {
-            var propertyType = property.PropertyType;
-
-            if (!propertyType.IsGenericType)
-               continue;
-
-            if (propertyType.GetGenericTypeDefinition() != typeof(IList<>))
-               continue;
-
-            var genericArgument = propertyType.GetGenericArguments()[0];
-            var listType = typeof(List<>).MakeGenericType(genericArgument);
-            dictionary.Add(property.Name, () => Activator.CreateInstance(listType));
-         }
-
-         return dictionary;
-      }
-
-      private static IList<T> CreateList<T>() => new List<T>();
+      public static IProxyList<T> NewList<T>(IList<ExpandoObject> expandos) => new ProxyList<T>(expandos);
 
       internal static T Wrap<T>(IDictionary<string, object> target)
       {
+         PropertyFilter.AddPropertiesToIgnore<T>(target);
+         MakeSureTypeIsInitialized<T>();
+
          return Factory.GetAdapter<T, object>(target);
+      }
+
+      private static void MakeSureTypeIsInitialized<T>()
+      {
+         var type = typeof(T);
+
+         if (InitializedTypes.ContainsKey(type))
+            return;
+
+         lock (InitializedTypes)
+         {
+            if (InitializedTypes.ContainsKey(type))
+               return;
+
+            var meta = Factory.GetAdapterMeta(type);
+
+            foreach (var property in meta.Properties)
+            {
+               property.Value.AddBehavior(new ObjectProxyPropertyBehavior());
+            }
+
+            InitializedTypes.TryAdd(type, null);
+         }
       }
 
       internal static bool TryUnwrap(object item, out ExpandoObject expando)

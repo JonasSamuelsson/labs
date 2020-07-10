@@ -14,15 +14,15 @@ namespace App
          Formatting = Formatting.Indented
       };
 
-      static void Main()
+      public static void Main()
       {
          var list = new List<ExpandoObject>();
-         var list1 = new ProxyList<IFirst>(list);
-         var list2 = new ProxyList<ISecond>(list);
+         var list1 = Proxy.NewList<IFirst>(list);
+         var list2 = Proxy.NewList<ISecond>(list);
 
          foreach (var name in new[] { "John Doe", "Bart Simpsons" })
          {
-            list1.Add(Proxy.Create<IFirst>(x => x.Name = name));
+            list1.Add(Proxy.NewObject<IFirst>(x => x.Name = name));
          }
 
          foreach (var s in list2)
@@ -34,14 +34,14 @@ namespace App
 
          var expando = new ExpandoObject();
 
-         //var first = Proxy.Create<IFirst>(expando, x => x.Name = "John Doe");
+         //var first = Proxy.NewObject<IFirst>(expando, x => x.Name = "John Doe");
 
          //first.Strings.Add("item");
          //first.Trash = "fail";
 
-         var second = Proxy.Create<ISecond>(expando);
+         var second = Proxy.NewObject<ISecond>(expando);
 
-         second.Child = Proxy.Create<IChild>();
+         second.Child = Proxy.NewObject<IChild>();
          //second.Child.Id = 123;
          second.Message = $"Hello there.";
          //second.Message = $"Hello {first.Name}.";
