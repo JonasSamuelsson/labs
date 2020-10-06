@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>_20201005_AzureDevOpsWorkItemVisualizer.Console</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\20201005-AzureDevOpsWorkItemVisualizer\20201005-AzureDevOpsWorkItemVisualizer.csproj" />
+  </ItemGroup>
+
+</Project>
