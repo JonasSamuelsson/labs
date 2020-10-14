@@ -41,6 +41,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
                      IsDone = item.Fields.State == "Done",
                      Name = item.Fields.Title,
                      State = item.Fields.State,
+                     Tags = item.Fields.Tags?.Split(';').Select(x => x.Trim()).OrderBy(x => x) ?? Enumerable.Empty<string>(),
                      Type = workItemType
                   });
                }
@@ -151,6 +152,9 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
       {
          [JsonProperty("System.State")]
          public string State { get; set; }
+
+         [JsonProperty("System.Tags")]
+         public string Tags { get; set; }
 
          [JsonProperty("System.Title")]
          public string Title { get; set; }

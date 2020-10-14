@@ -1,4 +1,5 @@
 ﻿using _20201005_AzureDevOpsWorkItemVisualizer.Model;
+using Handyman.Extensions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,7 +19,10 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          foreach (var item in data.Items.OrderBy(x => x.Id))
          {
             var attributes = new Dictionary<string, string>();
-            attributes["label"] = $"<<table border=\"0\"><tr><td>{item.Id} / {item.Type} / {item.State}</td></tr><tr><td>{SanitizeLabel(item.Name)}</td></tr></table>>";
+
+            var segments = new[] { (object)item.Id, item.Type, item.State, item.Tags.Join(", ") };
+            var metadata = string.Join(" / ", segments.Select(x => x.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)));
+            attributes["label"] = $"<<table border=\"0\"><tr><td>{metadata}</td></tr><tr><td>{SanitizeLabel(item.Name)}</td></tr></table>>";
             attributes["style"] = "filled";
             if (!item.IsDone) attributes["fillcolor"] = item.Type == WorkItemType.PBI ? "palegreen" : "lightskyblue";
             builder.AppendLine($"  {item.Id} [{string.Join(" ", attributes.Select(x => $"{x.Key}={x.Value}"))}]");
