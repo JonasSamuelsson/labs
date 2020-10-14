@@ -113,7 +113,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
       {
          var baseUri = new Uri($"https://dev.azure.com/{_options.Organization}/{_options.Project}/_apis/wit/");
 
-         var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_options.Username}:{_options.PersonalAccessToken}"));
+         var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($".:{_options.PersonalAccessToken}"));
 
          var request = new HttpRequestMessage(HttpMethod.Get, new Uri(baseUri, uri))
          {
