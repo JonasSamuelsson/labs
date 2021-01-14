@@ -2,7 +2,7 @@
 {
    public enum LinkType
    {
-      Child,
+      HasChild,
       DependsOn
    }
 }

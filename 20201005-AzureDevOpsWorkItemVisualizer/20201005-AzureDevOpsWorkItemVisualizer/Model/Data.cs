@@ -27,7 +27,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Model
       {
          if (type == "Child")
          {
-            linkType = LinkType.Child;
+            linkType = LinkType.HasChild;
             return true;
          }
 
@@ -45,7 +45,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Model
       {
          if (type == "Parent")
          {
-            linkType = LinkType.Child;
+            linkType = LinkType.HasChild;
             return true;
          }
 
