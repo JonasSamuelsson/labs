@@ -23,7 +23,8 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
             var segments = new[] { (object)item.Id, item.Type, item.State, item.Tags.Join(", ") };
             var metadata = string.Join(" / ", segments.Select(x => x.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)));
             attributes["label"] = $"<<table border=\"0\"><tr><td>{metadata}</td></tr><tr><td>{SanitizeLabel(item.Name)}</td></tr></table>>";
-            attributes["style"] = "filled";
+            attributes["shape"] = "box";
+            attributes["style"] = "\"filled,rounded\"";
             if (!item.IsDone) attributes["fillcolor"] = item.Type == WorkItemType.PBI ? "palegreen" : "lightskyblue";
             builder.AppendLine($"  {item.Id} [{string.Join(" ", attributes.Select(x => $"{x.Key}={x.Value}"))}]");
          }
