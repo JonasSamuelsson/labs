@@ -6,43 +6,15 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Model
 {
    public class Data
    {
-      private static readonly Dictionary<string, WorkItemType> SupportedWorkItemTypes = new Dictionary<string, WorkItemType>
-      {
-         {"Feature", WorkItemType.Feature},
-         {"Product Backlog Item", WorkItemType.PBI}
-      };
-
-      private static readonly SupportedLinkType[] SupportedLinkTypes = new[]
-      {
-         new SupportedLinkType
-         {
-            LinkDirection = LinkDirection.Forward,
-            LinkType = LinkType.HasChild,
-            RelationName = "Child"
-         },
-         new SupportedLinkType
-         {
-            LinkDirection = LinkDirection.Forward,
-            LinkType = LinkType.DependsOn,
-            RelationName = "Predecessor"
-         },
-         new SupportedLinkType
-         {
-            LinkDirection = LinkDirection.Reverse,
-            LinkType = LinkType.HasChild,
-            RelationName = "Parent"
-         },
-         new SupportedLinkType
-         {
-            LinkDirection = LinkDirection.Reverse,
-            LinkType = LinkType.DependsOn,
-            RelationName = "Successor"
-         }
-      };
-
+      private readonly bool _includeFinishedWorkItems;
       private readonly HashSet<int> _ignoredWorkItemIds = new HashSet<int>();
       private readonly HashSet<Link> _links = new HashSet<Link>(Comparer<Link>.Create(x => x.Id));
       private readonly HashSet<WorkItem> _workItems = new HashSet<WorkItem>(Comparer<WorkItem>.Create(x => x.Id));
+
+      public Data(bool includeFinishedWorkItems)
+      {
+         _includeFinishedWorkItems = includeFinishedWorkItems;
+      }
 
       public IEnumerable<WorkItem> WorkItems => _workItems;
       public IEnumerable<Link> Links => _links;
@@ -57,7 +29,12 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Model
 
       public bool TryAddWorkItem(AzureDevOpsClient.DevOpsItem item)
       {
-         if (SupportedWorkItemTypes.TryGetValue(item.Fields.Type, out var workItemType) == false)
+         var isFinished = item.Fields.State == "Done" || item.Fields.State == "Removed";
+
+         var hasValidState = _includeFinishedWorkItems || (isFinished == false);
+         var isValidType = SupportedWorkItemTypes.TryGetValue(item.Fields.Type, out var workItemType);
+
+         if ((hasValidState && isValidType) == false)
          {
             _ignoredWorkItemIds.Add(item.Id);
             _links.RemoveWhere(x => x.FromWorkItemId == item.Id || x.ToWorkItemId == item.Id);
@@ -67,7 +44,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Model
          _workItems.Add(new WorkItem
          {
             Id = item.Id,
-            IsDone = item.Fields.State == "Done",
+            IsFinished = isFinished,
             Name = item.Fields.Title,
             IsOrigin = false, // this will be set later
             State = item.Fields.State,
@@ -119,6 +96,40 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Model
             .Where(x => !resolvedWorkItemIds.Contains(x) || _ignoredWorkItemIds.Contains(x))
             .ToList();
       }
+
+      private static readonly Dictionary<string, WorkItemType> SupportedWorkItemTypes = new Dictionary<string, WorkItemType>
+      {
+         {"Feature", WorkItemType.Feature},
+         {"Product Backlog Item", WorkItemType.PBI}
+      };
+
+      private static readonly SupportedLinkType[] SupportedLinkTypes = new[]
+      {
+         new SupportedLinkType
+         {
+            LinkDirection = LinkDirection.Forward,
+            LinkType = LinkType.HasChild,
+            RelationName = "Child"
+         },
+         new SupportedLinkType
+         {
+            LinkDirection = LinkDirection.Forward,
+            LinkType = LinkType.DependsOn,
+            RelationName = "Predecessor"
+         },
+         new SupportedLinkType
+         {
+            LinkDirection = LinkDirection.Reverse,
+            LinkType = LinkType.HasChild,
+            RelationName = "Parent"
+         },
+         new SupportedLinkType
+         {
+            LinkDirection = LinkDirection.Reverse,
+            LinkType = LinkType.DependsOn,
+            RelationName = "Successor"
+         }
+      };
 
       private class Comparer<T> : IEqualityComparer<T>
       {

@@ -20,14 +20,14 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          {
             var attributes = new Dictionary<string, string>();
 
-            var segments = new[] { (object)item.Id, item.Type, item.State, item.Tags.Join(", ") };
+            var segments = new[] { (object)$"{item.Type} {item.Id}", item.State, item.Tags.Join(", ") };
             var metadata = string.Join(" / ", segments.Select(x => x.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)));
             var name = SanitizeLabel(item.Name);
 
             attributes["label"] = $"<<table border=\"0\"><tr><td>{metadata}</td></tr><tr><td>{name}</td></tr></table>>";
             attributes["shape"] = "box";
             attributes["style"] = item.IsOrigin ? "\"bold,filled,rounded\"" : "\"filled,rounded\"";
-            attributes["fillcolor"] = item.IsDone ? "transparent" : item.Type == WorkItemType.PBI ? "palegreen" : "lightskyblue";
+            attributes["fillcolor"] = item.IsFinished ? "transparent" : item.Type == WorkItemType.PBI ? "palegreen" : "lightskyblue";
             attributes["fontcolor"] = item.IsOrigin ? "black" : "gray25";
             attributes["fontsize"] = item.IsOrigin ? "16" : "14";
             builder.AppendLine($"  {item.Id} [{string.Join(" ", attributes.Select(x => $"{x.Key}={x.Value}"))}]");

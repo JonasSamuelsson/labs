@@ -7,17 +7,21 @@
 
 <div>
    <div style="position: fixed; top: 10px; left: 10px;">
-      <div style="background-color: #e5e5e5; border-radius: 5px; padding: 5px;">
+      <div style="background-color: #e5e5e5; border-radius: 10px; padding: 10px;">
          <span class="oi oi-expand-down" hidden="@(_editorVisible)" @onclick="ToggleEditorVisibility"></span>
          <div hidden="@(_editorVisible == false)">
-            <div><span>Organization</span></div>
-            <div><input @bind="AzureDevOpsClientOptions.Organization" type="text"/></div>
-            <div><span>Project</span></div>
-            <div><input @bind="AzureDevOpsClientOptions.Project" type="text"/></div>
-            <div><span>PAT</span></div>
-            <div><input @bind="AzureDevOpsClientOptions.PersonalAccessToken" type="password"/></div>
-            <div><span>Work item ids</span></div>
-            <div><input @bind="_ids" type="text"/></div>
+            <div><label for="organization">Organization</label></div>
+            <div><input id="organization" @bind="AzureDevOpsClientOptions.Organization" type="text" /></div>
+            <div><label for="project">Project</label></div>
+            <div><input id="project" @bind="AzureDevOpsClientOptions.Project" type="text" /></div>
+            <div><label for="pat">Personal access token</label></div>
+            <div><input id="pat" @bind="AzureDevOpsClientOptions.PersonalAccessToken" type="password" /></div>
+            <div><label for="ids">Work item ids</label></div>
+            <div><input id="ids" @bind="_ids" type="text" /></div>
+            <div>
+               <input id="includeFinished" @bind="_includeFinishedWorkItems" type="checkbox" />
+               <label for="includeFinished">Include finished work items</label>
+            </div>
             <div>
                <button hidden="@(_loading)" @onclick="Load">Load</button>
                <span hidden="@(!_loading)">Loading...</span>
@@ -35,6 +39,7 @@
 @code {
 
    private string _ids;
+   private bool _includeFinishedWorkItems;
    private bool _loading;
    private bool _editorVisible = true;
 
@@ -55,7 +60,8 @@
       {
          _loading = true;
 
-         var data = await AzureDevOpsClient.LoadData(ParseIds());
+         var workItemIds = ParseIds();
+         var data = await AzureDevOpsClient.LoadData(workItemIds, _includeFinishedWorkItems);
          var graph = GraphGenerator.GenerateGraph(data);
 
          Console.WriteLine(graph);

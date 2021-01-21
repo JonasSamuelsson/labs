@@ -19,9 +19,11 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Console
          {
          };
 
-         var data = await new AzureDevOpsClient(options).LoadData(itemIdsToResolve);
+         var data = await new AzureDevOpsClient(options).LoadData(itemIdsToResolve, false);
 
          var graph = new GraphGenerator().GenerateGraph(data);
+
+         // use http://magjac.com/graphviz-visual-editor/ to test graph
 
          System.Console.WriteLine(graph);
       }

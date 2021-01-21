@@ -22,11 +22,11 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          _options = options;
       }
 
-      public async Task<Data> LoadData(IEnumerable<int> workItemIds)
+      public async Task<Data> LoadData(IEnumerable<int> workItemIds, bool includeFinishedWorkItems)
       {
          var originWorkItemIds = workItemIds.ToList();
 
-         var data = new Data();
+         var data = new Data(includeFinishedWorkItems);
 
          var items = await LoadWorkItems(originWorkItemIds);
 
