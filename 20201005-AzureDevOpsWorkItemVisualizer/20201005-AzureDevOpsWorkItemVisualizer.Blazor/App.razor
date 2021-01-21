@@ -5,9 +5,9 @@
 @inject GraphGenerator GraphGenerator
 @inject IJSRuntime Javascript
 
-<div class="main">
-   <div style="position: fixed; top: 10px; left: 0;">
-      <div>
+<div>
+   <div style="position: fixed; top: 10px; left: 10px;">
+      <div style="background-color: #e5e5e5; border-radius: 5px; padding: 5px;">
          <div><span>Organization</span></div>
          <div><input @bind="AzureDevOpsClientOptions.Organization" type="text" /></div>
          <div><span>Project</span></div>
@@ -22,9 +22,7 @@
          </div>
       </div>
    </div>
-   <div class="content px-4">
-      <div id="graph"></div>
-   </div>
+   <div id="graph"></div>
 </div>
 
 
@@ -39,7 +37,7 @@
    private ISet<int> ParseIds()
    {
       return _ids
-         .Split(new[] { ' ', ',', '.' }, StringSplitOptions.RemoveEmptyEntries)
+         .Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries)
          .Select(int.Parse)
          .ToHashSet();
    }
