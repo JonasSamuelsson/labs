@@ -2,6 +2,7 @@
 using Handyman.Extensions;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 
 namespace _20201005_AzureDevOpsWorkItemVisualizer
@@ -45,6 +46,6 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          return builder.ToString();
       }
 
-      private static string SanitizeLabel(string s) => s.Replace("\"", "").Replace("&", "and");
+      private static string SanitizeLabel(string s) => WebUtility.HtmlEncode(s);
    }
 }
