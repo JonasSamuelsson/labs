@@ -6,22 +6,23 @@
 @inject IJSRuntime Javascript
 
 <div class="main">
+   <div style="position: fixed; top: 10px; left: 0;">
+      <div>
+         <div><span>Organization</span></div>
+         <div><input @bind="AzureDevOpsClientOptions.Organization" type="text" /></div>
+         <div><span>Project</span></div>
+         <div><input @bind="AzureDevOpsClientOptions.Project" type="text" /></div>
+         <div><span>PAT</span></div>
+         <div><input @bind="AzureDevOpsClientOptions.PersonalAccessToken" type="password" /></div>
+         <div><span>Work item ids</span></div>
+         <div><input @bind="_ids" type="text" /></div>
+         <div>
+            <button hidden="@(_loading)" @onclick="Load">Load</button>
+            <span hidden="@(!_loading)">Loading...</span>
+         </div>
+      </div>
+   </div>
    <div class="content px-4">
-      <div>
-         <label>Organization:</label>
-         <input @bind="AzureDevOpsClientOptions.Organization" type="text" />
-         <label>Project:</label>
-         <input @bind="AzureDevOpsClientOptions.Project" type="text" />
-         <label>PAT:</label>
-         <input @bind="AzureDevOpsClientOptions.PersonalAccessToken" type="password" />
-      </div>
-
-      <div>
-         <label>Work item ids:</label>
-         <input @bind="_ids" type="text" />
-         <button disabled="@(_loading)" @onclick="Load">Load</button>
-      </div>
-
       <div id="graph"></div>
    </div>
 </div>
@@ -51,6 +52,8 @@
 
          var data = await AzureDevOpsClient.LoadData(ParseIds());
          var graph = GraphGenerator.GenerateGraph(data);
+
+         Console.WriteLine(graph);
 
          await Javascript.InvokeVoidAsync("updateGraph", graph);
       }

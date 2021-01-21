@@ -16,16 +16,20 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
 
          builder.AppendLine("  rankdir = LR;");
 
-         foreach (var item in data.Items.OrderBy(x => x.Id))
+         foreach (var item in data.WorkItems.OrderBy(x => x.Id))
          {
             var attributes = new Dictionary<string, string>();
 
             var segments = new[] { (object)item.Id, item.Type, item.State, item.Tags.Join(", ") };
             var metadata = string.Join(" / ", segments.Select(x => x.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)));
-            attributes["label"] = $"<<table border=\"0\"><tr><td>{metadata}</td></tr><tr><td>{SanitizeLabel(item.Name)}</td></tr></table>>";
+            var name = SanitizeLabel(item.Name);
+
+            attributes["label"] = $"<<table border=\"0\"><tr><td>{metadata}</td></tr><tr><td>{name}</td></tr></table>>";
             attributes["shape"] = "box";
-            attributes["style"] = "\"filled,rounded\"";
-            if (!item.IsDone) attributes["fillcolor"] = item.Type == WorkItemType.PBI ? "palegreen" : "lightskyblue";
+            attributes["style"] = item.IsOrigin ? "\"bold,filled,rounded\"" : "\"filled,rounded\"";
+            attributes["fillcolor"] = item.IsDone ? "transparent" : item.Type == WorkItemType.PBI ? "palegreen" : "lightskyblue";
+            attributes["fontcolor"] = item.IsOrigin ? "black" : "gray25";
+            attributes["fontsize"] = item.IsOrigin ? "16" : "14";
             builder.AppendLine($"  {item.Id} [{string.Join(" ", attributes.Select(x => $"{x.Key}={x.Value}"))}]");
          }
 
@@ -33,7 +37,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          {
             var attributes = new Dictionary<string, string>();
             attributes["label"] = link.Type.ToString();
-            builder.AppendLine($"  {link.From} -> {link.To} [{string.Join(" ", attributes.Select(x => $"{x.Key}={x.Value}"))}]");
+            builder.AppendLine($"  {link.FromWorkItemId} -> {link.ToWorkItemId} [{string.Join(" ", attributes.Select(x => $"{x.Key}={x.Value}"))}]");
          }
 
          builder.AppendLine("}");

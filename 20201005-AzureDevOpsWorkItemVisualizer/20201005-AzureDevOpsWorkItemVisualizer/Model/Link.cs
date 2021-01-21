@@ -2,10 +2,10 @@
 {
    public class Link
    {
-      public int From { get; set; }
-      public int To { get; set; }
+      public int FromWorkItemId { get; set; }
+      public int ToWorkItemId { get; set; }
       public LinkType Type { get; set; }
 
-      public string Id => $"{From}:{To}:{Type}";
+      public string Id => $"{FromWorkItemId}:{ToWorkItemId}:{Type}";
    }
 }

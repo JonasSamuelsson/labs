@@ -4,7 +4,6 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -23,78 +22,50 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          _options = options;
       }
 
-      public async Task<Data> LoadData(ISet<int> workItemIds)
+      public async Task<Data> LoadData(IEnumerable<int> workItemIds)
       {
+         var originWorkItemIds = workItemIds.ToList();
+
          var data = new Data();
 
-         while (workItemIds.Any())
+         var items = await LoadWorkItems(originWorkItemIds);
+
+         foreach (var item in items)
          {
-            var items = await LoadWorkItems(workItemIds);
+            if (data.TryAddWorkItem(item) == false)
+               continue;
 
-            foreach (var item in items)
+            foreach (var relation in item.Relations)
             {
-               if (Data.IsSupportedWorkItemType(item.Fields.Type, out var workItemType))
+               data.AddLink(item.Id, relation, new[] { LinkDirection.Forward, LinkDirection.Reverse });
+            }
+         }
+
+         foreach (var linkDirection in new[] { LinkDirection.Forward, LinkDirection.Reverse })
+         {
+            while (true)
+            {
+               var unresolvedWorkItemIds = data.GetUnresolvedWorkItemIds(linkDirection);
+
+               if (unresolvedWorkItemIds.Any() == false)
+                  break;
+
+               items = await LoadWorkItems(unresolvedWorkItemIds);
+
+               foreach (var item in items)
                {
-                  data.Items.Add(new WorkItem
+                  if (data.TryAddWorkItem(item) == false)
+                     continue;
+
+                  foreach (var relation in item.Relations)
                   {
-                     Id = item.Id,
-                     IsDone = item.Fields.State == "Done",
-                     Name = item.Fields.Title,
-                     State = item.Fields.State,
-                     Tags = item.Fields.Tags?.Split(';').Select(x => x.Trim()).OrderBy(x => x) ?? Enumerable.Empty<string>(),
-                     Type = workItemType
-                  });
-               }
-               else
-               {
-                  data.IgnoredWorkItemIds.Add(item.Id);
-                  data.Links.RemoveWhere(x => x.From == item.Id || x.To == item.Id);
-                  continue;
-               }
-
-               foreach (var relation in item.Relations)
-               {
-                  if (Data.IsSupportedForwardRelation(relation.Attributes.Name, out var forwardRelationAlias))
-                  {
-                     var toId = relation.GetToId();
-
-                     if (data.IgnoredWorkItemIds.Contains(toId))
-                        continue;
-
-                     workItemIds.Add(toId);
-
-                     data.Links.Add(new Link
-                     {
-                        From = item.Id,
-                        To = toId,
-                        Type = forwardRelationAlias
-                     });
-                  }
-                  else if (Data.IsSupportedReverseRelation(relation.Attributes.Name, out var reverseRelationAlias))
-                  {
-                     var toId = relation.GetToId();
-
-                     if (data.IgnoredWorkItemIds.Contains(toId))
-                        continue;
-
-                     workItemIds.Add(toId);
-
-                     data.Links.Add(new Link
-                     {
-                        From = toId,
-                        To = item.Id,
-                        Type = reverseRelationAlias
-                     });
+                     data.AddLink(item.Id, relation, new[] { linkDirection });
                   }
                }
             }
-
-            data.IgnoredWorkItemIds.ToList().ForEach(id => data.Links.RemoveWhere(x => x.From == id || x.To == id));
-
-            var resolvedItemIds = data.Items.Select(x => x.Id).ToList();
-            workItemIds.ExceptWith(resolvedItemIds);
-            workItemIds.ExceptWith(data.IgnoredWorkItemIds);
          }
+
+         data.MarkOriginWorkItems(originWorkItemIds);
 
          return data;
       }
@@ -125,11 +96,6 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          };
 
          var response = await HttpClient.SendAsync(request);
-
-         if (response.StatusCode != HttpStatusCode.OK)
-         {
-            var s = await response.Content.ReadAsStringAsync();
-         }
 
          response.EnsureSuccessStatusCode();
 
@@ -168,8 +134,6 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          public string Rel { get; set; }
          public string Url { get; set; }
          public DevOpsRelationAttributes Attributes { get; set; }
-
-         public int GetToId() => int.Parse(Url.Split('/').Last());
       }
 
       public class DevOpsRelationAttributes
