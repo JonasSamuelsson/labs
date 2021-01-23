@@ -16,13 +16,13 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Console
 
          var includeWorkItemTypes = new HashSet<WorkItemType>
          {
-            //WorkItemType.Epic,
+            WorkItemType.Epic,
             WorkItemType.Feature,
-            //WorkItemType.PBI
+            WorkItemType.PBI
          };
 
          var client = new AzureDevOpsClient(options);
-         var crawler = new DirectLinksCrawler(client);
+         var crawler = new AllLinksCrawler(client);
          var data = await crawler.GetData(workItemIds, includeWorkItemTypes, includeFinishedWorkItems: false);
 
          var graph = new GraphGenerator().GenerateGraph(data, workItemIds);

@@ -9,7 +9,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
 {
    public class AzureDevOpsClient : IAzureDevOpsClient
    {
-      private IAzureDevOpsHttpClient _httpClient;
+      private readonly IAzureDevOpsHttpClient _httpClient;
       private readonly Dictionary<int, DevOpsItem> _itemCache;
 
       public AzureDevOpsClient(AzureDevOpsClientOptions options) : this(new AzureDevOpsHttpClient(options))
@@ -91,7 +91,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
             .Except(cached.Select(x => x.Id))
             .ToList();
 
-         return (await _httpClient.GetWorkItems(ids)).Concat(cached)
+         return (await _httpClient.GetWorkItems<DevOpsItem>(ids)).Concat(cached)
             .Visit(x => _itemCache[x.Id] = x)
             .ToList();
       }

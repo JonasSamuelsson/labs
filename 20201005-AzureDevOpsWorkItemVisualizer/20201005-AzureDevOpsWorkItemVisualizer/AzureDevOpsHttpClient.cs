@@ -20,14 +20,14 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          _options = options;
       }
 
-      public async Task<IEnumerable<AzureDevOpsClient.DevOpsItem>> GetWorkItems(IEnumerable<int> ids)
+      public async Task<IEnumerable<T>> GetWorkItems<T>(IEnumerable<int> ids)
       {
          return (await ids
                .Distinct()
                .OrderBy(x => x)
                .Chunk(200)
                .Select(x => $"workitems?api-version=6.0&$expand=relations&ids={string.Join(",", x)}")
-               .Select(Load<AzureDevOpsClient.DevOpsItem[]>)
+               .Select(Load<T[]>)
                .WhenAll())
             .SelectMany(x => x);
       }
