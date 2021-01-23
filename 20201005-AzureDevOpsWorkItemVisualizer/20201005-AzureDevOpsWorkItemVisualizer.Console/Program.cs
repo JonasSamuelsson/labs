@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using _20201005_AzureDevOpsWorkItemVisualizer.Model;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace _20201005_AzureDevOpsWorkItemVisualizer.Console
@@ -7,21 +8,24 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer.Console
    {
       public static async Task Main()
       {
-         System.Console.Write("Work item ids: ");
-         var input = System.Console.ReadLine();
-
-         var itemIdsToResolve = input.Split(',')
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(int.Parse)
-            .ToHashSet();
-
          var options = new AzureDevOpsClientOptions
          {
          };
 
-         var data = await new AzureDevOpsClient(options).LoadData(itemIdsToResolve, false);
+         var workItemIds = new HashSet<int> { 28652 };
 
-         var graph = new GraphGenerator().GenerateGraph(data);
+         var includeWorkItemTypes = new HashSet<WorkItemType>
+         {
+            //WorkItemType.Epic,
+            WorkItemType.Feature,
+            //WorkItemType.PBI
+         };
+
+         var client = new AzureDevOpsClient(options);
+         var crawler = new DirectLinksCrawler(client);
+         var data = await crawler.GetData(workItemIds, includeWorkItemTypes, includeFinishedWorkItems: false);
+
+         var graph = new GraphGenerator().GenerateGraph(data, workItemIds);
 
          // use http://magjac.com/graphviz-visual-editor/ to test graph
 

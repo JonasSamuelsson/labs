@@ -1,8 +1,6 @@
 @using _20201005_AzureDevOpsWorkItemVisualizer
+@using _20201005_AzureDevOpsWorkItemVisualizer.Model
 
-@inject AzureDevOpsClient AzureDevOpsClient
-@inject AzureDevOpsClientOptions AzureDevOpsClientOptions
-@inject GraphGenerator GraphGenerator
 @inject IJSRuntime Javascript
 
 <div>
@@ -11,13 +9,21 @@
          <span class="oi oi-expand-down" hidden="@(_editorVisible)" @onclick="ToggleEditorVisibility"></span>
          <div hidden="@(_editorVisible == false)">
             <div><label for="organization">Organization</label></div>
-            <div><input id="organization" @bind="AzureDevOpsClientOptions.Organization" type="text" /></div>
+            <div><input id="organization" @bind="_clientOptions.Organization" type="text" /></div>
             <div><label for="project">Project</label></div>
-            <div><input id="project" @bind="AzureDevOpsClientOptions.Project" type="text" /></div>
+            <div><input id="project" @bind="_clientOptions.Project" type="text" /></div>
             <div><label for="pat">Personal access token</label></div>
-            <div><input id="pat" @bind="AzureDevOpsClientOptions.PersonalAccessToken" type="password" /></div>
+            <div><input id="pat" @bind="_clientOptions.PersonalAccessToken" type="password" /></div>
             <div><label for="ids">Work item ids</label></div>
             <div><input id="ids" @bind="_ids" type="text" /></div>
+            <div>
+               <input id="includeEpics" @bind="_includeEpics" type="checkbox" />
+               <label for="includeEpics">Epics</label>
+               <input id="includeFeatures" @bind="_includeFeatures" type="checkbox" />
+               <label for="includeFeatures">Features</label>
+               <input id="includePbis" @bind="_includePbis" type="checkbox" />
+               <label for="includePbis">PBIs</label>
+            </div>
             <div>
                <input id="includeFinished" @bind="_includeFinishedWorkItems" type="checkbox" />
                <label for="includeFinished">Include finished work items</label>
@@ -38,7 +44,11 @@
 
 @code {
 
+   private readonly AzureDevOpsClientOptions _clientOptions = new AzureDevOpsClientOptions();
    private string _ids;
+   private bool _includeEpics;
+   private bool _includeFeatures = true;
+   private bool _includePbis = true;
    private bool _includeFinishedWorkItems;
    private bool _loading;
    private bool _editorVisible = true;
@@ -61,8 +71,14 @@
          _loading = true;
 
          var workItemIds = ParseIds();
-         var data = await AzureDevOpsClient.LoadData(workItemIds, _includeFinishedWorkItems);
-         var graph = GraphGenerator.GenerateGraph(data);
+         var workItemTypes = new HashSet<WorkItemType>();
+         if (_includeEpics) workItemTypes.Add(WorkItemType.Epic);
+         if (_includeFeatures) workItemTypes.Add(WorkItemType.Feature);
+         if (_includePbis) workItemTypes.Add(WorkItemType.PBI);
+         var client = new AzureDevOpsClient(_clientOptions);
+         var crawler = new AllLinksCrawler(client);
+         var data = await crawler.GetData(workItemIds, workItemTypes, _includeFinishedWorkItems);
+         var graph = new GraphGenerator().GenerateGraph(data, workItemIds);
 
          Console.WriteLine(graph);
 

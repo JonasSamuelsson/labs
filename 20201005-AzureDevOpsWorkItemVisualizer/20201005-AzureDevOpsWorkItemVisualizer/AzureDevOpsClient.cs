@@ -1,110 +1,99 @@
 ﻿using _20201005_AzureDevOpsWorkItemVisualizer.Model;
 using Handyman.Extensions;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace _20201005_AzureDevOpsWorkItemVisualizer
 {
-   public class AzureDevOpsClient
+   public class AzureDevOpsClient : IAzureDevOpsClient
    {
-      private static readonly HttpClient HttpClient = new HttpClient();
+      private IAzureDevOpsHttpClient _httpClient;
+      private readonly Dictionary<int, DevOpsItem> _itemCache;
 
-      private readonly AzureDevOpsClientOptions _options;
-
-      public AzureDevOpsClient(AzureDevOpsClientOptions options)
+      public AzureDevOpsClient(AzureDevOpsClientOptions options) : this(new AzureDevOpsHttpClient(options))
       {
-         _options = options;
       }
 
-      public async Task<Data> LoadData(IEnumerable<int> workItemIds, bool includeFinishedWorkItems)
+      public AzureDevOpsClient(IAzureDevOpsHttpClient httpClient)
       {
-         var originWorkItemIds = workItemIds.ToList();
+         _httpClient = httpClient;
+         _itemCache = new Dictionary<int, DevOpsItem>();
+      }
 
-         var data = new Data(includeFinishedWorkItems);
+      public async Task<WorkItemCollection> GetData(ISet<int> workItemIds, ISet<WorkItemType> workItemTypes, bool includeFinished)
+      {
+         var result = new WorkItemCollection();
 
-         var items = await LoadWorkItems(originWorkItemIds);
+         var linkCandidates = new List<LinkCandidate>();
 
-         foreach (var item in items)
+         foreach (var item in await GetWorkItems(workItemIds))
          {
-            if (data.TryAddWorkItem(item) == false)
+            if (TryCreateWorkItem(item, workItemTypes, includeFinished, out var workItem) == false)
                continue;
+
+            result.WorkItems.Add(workItem);
 
             foreach (var relation in item.Relations)
             {
-               data.AddLink(item.Id, relation, new[] { LinkDirection.Forward, LinkDirection.Reverse });
-            }
-         }
+               if (Link.TryCreate(item.Id, relation.TargetWorkItemId, relation.Attributes.Name, out var link) == false)
+                  continue;
 
-         foreach (var linkDirection in new[] { LinkDirection.Forward, LinkDirection.Reverse })
-         {
-            while (true)
-            {
-               var unresolvedWorkItemIds = data.GetUnresolvedWorkItemIds(linkDirection);
-
-               if (unresolvedWorkItemIds.Any() == false)
-                  break;
-
-               items = await LoadWorkItems(unresolvedWorkItemIds);
-
-               foreach (var item in items)
+               linkCandidates.Add(new LinkCandidate
                {
-                  if (data.TryAddWorkItem(item) == false)
-                     continue;
-
-                  foreach (var relation in item.Relations)
-                  {
-                     data.AddLink(item.Id, relation, new[] { linkDirection });
-                  }
-               }
+                  Link = link,
+                  TargetWorkItemId = relation.TargetWorkItemId
+               });
             }
          }
 
-         data.MarkOriginWorkItems(originWorkItemIds);
+         var ids = linkCandidates
+            .Select(x => x.TargetWorkItemId)
+            .ToSet();
 
-         return data;
-      }
+         var items = (await GetWorkItems(ids)).ToDictionary(x => x.Id);
 
-      private async Task<IEnumerable<DevOpsItem>> LoadWorkItems(IEnumerable<int> ids)
-      {
-         return (await ids
-            .Chunk(200)
-            .Select(x => $"workitems?api-version=6.0&$expand=relations&ids={string.Join(",", ids)}")
-            .Select(Load<DevOpsItem[]>)
-            .WhenAll())
-            .SelectMany(x => x);
-      }
-
-      private async Task<T> Load<T>(string uri)
-      {
-         var baseUri = new Uri($"https://dev.azure.com/{_options.Organization}/{_options.Project}/_apis/wit/");
-
-         var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($".:{_options.PersonalAccessToken}"));
-
-         var request = new HttpRequestMessage(HttpMethod.Get, new Uri(baseUri, uri))
+         foreach (var candidate in linkCandidates)
          {
-            Headers =
-            {
-               Accept = { new MediaTypeWithQualityHeaderValue("application/json")},
-               Authorization = new AuthenticationHeaderValue("Basic", auth)
-            }
-         };
+            var item = items[candidate.TargetWorkItemId];
 
-         var response = await HttpClient.SendAsync(request);
+            if (TryCreateWorkItem(item, workItemTypes, includeFinished, out _) == false)
+               continue;
 
-         response.EnsureSuccessStatusCode();
+            result.Links.Add(candidate.Link);
+         }
 
-         return (await response.Content.ReadAsAsync<Response<T>>()).Value;
+         return result;
       }
 
-      public class Response<T>
+      private static bool TryCreateWorkItem(DevOpsItem item, ISet<WorkItemType> workItemTypes, bool includeFinished, out WorkItem workItem)
       {
-         public T Value { get; set; }
+         if (WorkItem.TryCreate(item, out workItem) == false)
+            return false;
+
+         if (workItemTypes.Contains(workItem.Type) == false)
+            return false;
+
+         if (workItem.IsFinished && includeFinished == false)
+            return false;
+
+         return true;
+      }
+
+      private async Task<IEnumerable<DevOpsItem>> GetWorkItems(ISet<int> workItemIds)
+      {
+         var cached = _itemCache.Values
+            .Where(x => workItemIds.Contains(x.Id))
+            .ToList();
+
+         var ids = workItemIds
+            .Except(cached.Select(x => x.Id))
+            .ToList();
+
+         return (await _httpClient.GetWorkItems(ids)).Concat(cached)
+            .Visit(x => _itemCache[x.Id] = x)
+            .ToList();
       }
 
       public class DevOpsItem
@@ -134,11 +123,19 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
          public string Rel { get; set; }
          public string Url { get; set; }
          public DevOpsRelationAttributes Attributes { get; set; }
+
+         public int TargetWorkItemId => int.TryParse(Url.Split('/').Last(), out var i) ? i : 0;
       }
 
       public class DevOpsRelationAttributes
       {
          public string Name { get; set; }
+      }
+
+      private class LinkCandidate
+      {
+         public Link Link { get; set; }
+         public int TargetWorkItemId { get; set; }
       }
    }
 }

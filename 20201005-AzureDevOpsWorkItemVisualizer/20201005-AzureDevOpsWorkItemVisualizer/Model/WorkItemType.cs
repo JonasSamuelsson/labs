@@ -2,6 +2,7 @@
 {
    public enum WorkItemType
    {
+      Epic,
       Feature,
       PBI
    }

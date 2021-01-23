@@ -6,6 +6,7 @@ html, body {
 
 label {
    margin-bottom: 0;
+   margin-right: 8px;
    padding: 0;
 }
 
@@ -13,6 +14,6 @@ input {
    margin-bottom: 3px;
 }
 
-input[type=text], input[type=password] {
-   width: 250px;
-}
+   input[type=text], input[type=password] {
+      width: 250px;
+   }

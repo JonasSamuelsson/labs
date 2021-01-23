@@ -9,7 +9,7 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
 {
    public class GraphGenerator
    {
-      public string GenerateGraph(Data data)
+      public string GenerateGraph(WorkItemCollection data, ISet<int> highlightWorkItemIds)
       {
          var builder = new StringBuilder();
 
@@ -23,18 +23,26 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
 
             var segments = new[] { (object)$"{item.Type} {item.Id}", item.State, item.Tags.Join(", ") };
             var metadata = string.Join(" / ", segments.Select(x => x.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)));
-            var name = SanitizeLabel(item.Name);
+            var name = WebUtility.HtmlEncode(item.Name);
+
+            var highlight = highlightWorkItemIds.Contains(item.Id);
 
             attributes["label"] = $"<<table border=\"0\"><tr><td>{metadata}</td></tr><tr><td>{name}</td></tr></table>>";
             attributes["shape"] = "box";
-            attributes["style"] = item.IsOrigin ? "\"bold,filled,rounded\"" : "\"filled,rounded\"";
-            attributes["fillcolor"] = item.IsFinished ? "transparent" : item.Type == WorkItemType.PBI ? "palegreen" : "lightskyblue";
-            attributes["fontcolor"] = item.IsOrigin ? "black" : "gray25";
-            attributes["fontsize"] = item.IsOrigin ? "16" : "14";
+            attributes["style"] = highlight ? "\"bold,filled,rounded\"" : "\"filled,rounded\"";
+            attributes["fillcolor"] = item.IsFinished
+               ? "transparent"
+               : item.Type == WorkItemType.Epic
+                  ? "orange"
+                  : item.Type == WorkItemType.Feature
+                     ? "lightskyblue"
+                     : "palegreen";
+            attributes["fontcolor"] = highlight ? "black" : "gray25";
+            attributes["fontsize"] = highlight ? "16" : "14";
             builder.AppendLine($"  {item.Id} [{string.Join(" ", attributes.Select(x => $"{x.Key}={x.Value}"))}]");
          }
 
-         foreach (var link in data.Links.OrderBy(x => x.Id))
+         foreach (var link in data.Links.OrderBy(x => x.Identifier))
          {
             var attributes = new Dictionary<string, string>();
             attributes["label"] = link.Type.ToString();
@@ -45,7 +53,5 @@ namespace _20201005_AzureDevOpsWorkItemVisualizer
 
          return builder.ToString();
       }
-
-      private static string SanitizeLabel(string s) => WebUtility.HtmlEncode(s);
    }
 }
